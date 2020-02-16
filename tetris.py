@@ -7,10 +7,13 @@ class SetupGame:
     def __init__(self):
         pygame.init()
 
+        self.clock = pygame.time.Clock()
         self.block = 40
         self.main_window_width_height = (20*self.block, 20*self.block)
         self.main_window = pygame.display.set_mode(self.main_window_width_height)
         pygame.display.set_caption("Tetris")
+
+        self.draw_array = []
 
         # define colours
         self.dark_blue, self.light_blue = (40, 63, 128), (156, 182, 255)
@@ -29,6 +32,7 @@ class SetupGame:
         self.main_window.blit(self.game_display, (5*self.block, 1*self.block))
 
         self.game_display.fill(self.off_white)
+        self.clock.tick(60)
 
     @staticmethod
     def event_handling():
@@ -195,7 +199,12 @@ class Tetromino(pygame.sprite.Sprite):
         else:
             self.current_rotation += 1
 
+    def gravity(self):
+        self.rect.y += self.block_size
+
     def draw(self, surface):
+        self.gravity()
+
         x, y = self.rect.x, self.rect.y
         block_size = 40
         i = 0
@@ -214,6 +223,7 @@ class Tetromino(pygame.sprite.Sprite):
 
 
 if __name__ == "__main__":
+
     new_game = SetupGame()
 
     tet = Tetromino()
@@ -221,4 +231,6 @@ if __name__ == "__main__":
     while True:
         new_game.loop()
         new_game.event_handling()
+
         tet.draw(new_game.game_display)
+
