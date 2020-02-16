@@ -93,7 +93,58 @@ class Tetromino(pygame.sprite.Sprite):
                                         "-----",
                                         "---B-",
                                         "-BBB-",
-                                        "-----"]]}
+                                        "-----"]],
+                                 "J": [["-----",
+                                        "--B--",
+                                        "--B--",
+                                        "-BB--",
+                                        "-----"],
+                                       ["-----",
+                                        "-----",
+                                        "B----",
+                                        "BBB--",
+                                        "-----"],
+                                       ["-----",
+                                        "-BB--",
+                                        "-B---",
+                                        "-B---",
+                                        "-----"],
+                                       ["-----",
+                                        "-----",
+                                        "-BBB-",
+                                        "---B-",
+                                        "-----"]],
+                                 "I": [["-----",
+                                        "--B--",
+                                        "--B--",
+                                        "--B--",
+                                        "--B--"],
+                                       ["-----",
+                                        "-----",
+                                        "-----",
+                                        "-BBBB",
+                                        "-----"]],
+                                 "T": [["-----",
+                                        "-----",
+                                        "-BBB-",
+                                        "--B--",
+                                        "-----"],
+                                       ["-----",
+                                        "--B--",
+                                        "-BB--",
+                                        "--B--",
+                                        "-----"],
+                                       ["-----",
+                                        "-----",
+                                        "--B--",
+                                        "-BBB-",
+                                        "-----"],
+                                       ["-----",
+                                        "--B--",
+                                        "--BB-",
+                                        "--B--",
+                                        "-----"]]
+                                 }
 
     def create_blocks(self):
         for i in range(4):
@@ -104,7 +155,7 @@ class Tetromino(pygame.sprite.Sprite):
         x, y = self.rect.x, self.rect.y
         block_size = 40
         i = 0
-        for string in self.shape_dictionary.get("L")[2]:
+        for string in self.shape_dictionary.get("T")[0]:
             for char in string:
                 if char == '-':
                     x += block_size
