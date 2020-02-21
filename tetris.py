@@ -103,6 +103,7 @@ class Block(pygame.sprite.Sprite):
         self.light_colour, self.dark_colour = colour
         self.image.fill(self.light_colour)
         self.border.fill(self.dark_colour)
+        # hitbox will check for collision
 
     def draw(self, xy, surface):
         self.rect.x, self.rect.y, = xy
@@ -122,6 +123,7 @@ class Tetromino(pygame.sprite.Sprite):
         self.colour = random.choice(colours)
         self.next_tetromino = True
         self.current_tetromino = False
+        self.stationary = False
 
         # set co-ordinates for preview box
         self.rect.x = -20
@@ -237,7 +239,7 @@ class Tetromino(pygame.sprite.Sprite):
 
     def set_play_coordinates(self):
         self.rect.x = random.choice(range(0, 8*self.block_size, self.block_size))
-        self.rect.y = 20
+        self.rect.y = -40
         self.next_tetromino = False
         self.current_tetromino = True
 
@@ -252,15 +254,26 @@ class Tetromino(pygame.sprite.Sprite):
 
     def move_left(self):
         if not self.next_tetromino:
-            # todo - must make sure it doesn't go off screen
-            self.rect.x -= self.block_size
+            for block in self.blocks.sprites():
+                if block.rect.x <= 0:
+                    return
+            else:
+                self.rect.x -= self.block_size
 
     def move_right(self):
         if not self.next_tetromino:
-            self.rect.x += self.block_size
+            for block in self.blocks.sprites():
+                if block.rect.x + 40 >= 10 * self.block_size:
+                    return
+            else:
+                self.rect.x += self.block_size
 
     def gravity(self):
-        self.rect.y += self.block_size
+        for block in self.blocks.sprites():
+            if block.rect.y + 40 >= 18 * self.block_size:
+                self.stationary = True
+        if not self.stationary:
+            self.rect.y += self.block_size
 
     def draw(self, surface):
         x, y = self.rect.x, self.rect.y
