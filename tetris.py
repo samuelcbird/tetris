@@ -9,6 +9,9 @@ class SetupGame:
         pygame.init()
 
         self.clock = pygame.time.Clock()
+        self.timer = pygame.time.get_ticks()
+        # define speed for tetromino frame rate
+        self.framerate = 500
         self.block = 40
         self.main_window_width_height = (22*self.block, 20*self.block)
         self.main_window = pygame.display.set_mode(self.main_window_width_height)
@@ -48,8 +51,11 @@ class SetupGame:
         self.next_tetromino_display.fill(self.dark_grey)
 
         self.current_tetromino.draw(self.game_display)
-        # self.current_tetromino.gravity()
         self.next_tetromino.draw(self.next_tetromino_display)
+
+        if self.timer < (pygame.time.get_ticks() - self.framerate):
+            self.current_tetromino.gravity()
+            self.timer = pygame.time.get_ticks()
 
         self.clock.tick(60)
 
@@ -71,12 +77,18 @@ class SetupGame:
                 pygame.quit()
                 quit()
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # todo - configure space bar rotation
-                self.current_tetromino.rotate()
+                pass
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
                 pass
             elif event.type == pygame.MOUSEBUTTONUP:
                 pass
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    self.current_tetromino.rotate()
+                elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
+                    self.current_tetromino.move_left()
+                elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
+                    self.current_tetromino.move_right()
 
 
 class Block(pygame.sprite.Sprite):
@@ -237,6 +249,15 @@ class Tetromino(pygame.sprite.Sprite):
                 self.current_rotation += 1
         else:
             pass
+
+    def move_left(self):
+        if not self.next_tetromino:
+            # todo - must make sure it doesn't go off screen
+            self.rect.x -= self.block_size
+
+    def move_right(self):
+        if not self.next_tetromino:
+            self.rect.x += self.block_size
 
     def gravity(self):
         self.rect.y += self.block_size
