@@ -136,7 +136,7 @@ class Hitbox(pygame.sprite.Sprite):
     def __init__(self, width, height, xy, surface):
         pygame.sprite.Sprite.__init__(self)
 
-        self.image = pygame.Surface([width, height])
+        self.image = pygame.Surface((width, height))
         self.image.fill((10, 10, 10))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = xy

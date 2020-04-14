@@ -65,5 +65,136 @@ class SetupGame:
             return
 
 
+class XHitbox(pygame.sprite.Sprite):
+    """ Used for X-Axis collision detection. """
+
+    def __init__(self, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.Surface((60, 20))
+        self.image.fill((152, 251, 152))
+        self.rect = self.image.get_rect()
+
+        self.set_x(x)
+        self.set_y(y)
+
+    def draw(self):
+        return
+
+    def set_x(self, x):
+        return
+
+    def set_y(self, y):
+        return
+
+
+class YHitbox(XHitbox):
+    """ Used for Y-Axis collision detection. """
+
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.image = pygame.Surface((20, 60))
+
+
+class Block(pygame.sprite.Sprite):
+
+    def __init__(self, colour, identification):
+        pygame.sprite.Sprite.__init__(self)
+        # self.ID used to identify blocks when they're being drawn.
+        self.ID = identification
+
+        # Block is (39, 39) so that there is a 2px gap between each block.
+        self.image = pygame.Surface((39, 39))
+        # self.center is filled with a different colour to self image to create a border.
+        self.center = pygame.Surface((35, 35))
+        self.rect = self.image.get_rect()
+        # Unpacking the colour tuple and filling the two surfaces.
+        self.dark, self.light = colour
+        self.image.fill(self.dark)
+        self.center.fill(self.light)
+
+        # Create the hitboxes.
+        # -- Adjusted X and Y for their initialisation, so they're in the correct position.
+        self.x_hitbox = XHitbox(self.rect.x-20, self.rect.y+20)
+        self.y_hitbox = YHitbox(self.rect.x+20, self.rect.y-20)
+
+    def draw(self):
+        return
+
+    def get_x(self) -> int:
+        return self.rect.x
+
+    def get_y(self) -> int:
+        return self.rect.y
+
+    def move_down(self):
+        return
+
+    def set_x(self):
+        return
+
+    def set_y(self):
+        return
+
+
+class Tetromino(pygame.sprite.Sprite):
+
+    def __init__(self, block_size, colours):
+        pygame.sprite.Sprite.__init__(self)
+        self.block_size = block_size
+
+        # Surface is (160, 160) because the shape templates are that big.
+        self.image = pygame.Surface((160, 160))
+        self.rect = self.image.get_rect()
+
+        # Pick a random colour for the Tetromino
+        self.colour = random.choice(list(colours.keys()))
+
+        # Integer to hold current rotation of Tetromino.
+        self.rotation = 0
+
+        # Group to hold the blocks with make up the Tetromino
+        self.blocks = pygame.sprite.Group()
+
+        # Create the blocks
+        self.create_blocks()
+
+    def create_blocks(self):
+        """ Creates a block and give it an ID. """
+
+        for i in range(4):
+            new_block = Block(self.colour, i)
+            self.blocks.add(new_block)
+
+    def collision_detection(self):
+        return
+
+    def rotate(self):
+        return
+
+    def move_left(self):
+        return
+
+    def move_right(self):
+        return
+
+    def move_down(self):
+        return
+
+    def draw(self):
+        return
+
+    def set_x(self):
+        return
+
+    def set_y(self):
+        return
+
+    def get_x(self) -> int:
+        return self.rect.x
+
+    def get_y(self) -> int:
+        return self.rect.y
+
+
 if __name__ == "__main__":
     pass
