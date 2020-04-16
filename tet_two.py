@@ -117,23 +117,43 @@ class Block(pygame.sprite.Sprite):
         self.x_hitbox = XHitbox(self.rect.x-20, self.rect.y+20)
         self.y_hitbox = YHitbox(self.rect.x+20, self.rect.y-20)
 
-    def draw(self):
-        return
+    def draw(self, surface, x_and_y=None):
+        """ Draws the block on the given surface and at the given co-ordinates.
+            --- If the x_and_y argument is None, the block is no longer part of a Tetromino,
+                and should be drawn at the co-ordinates it currently occupies. """
 
-    def get_x(self) -> int:
-        return self.rect.x
+        # todo - maybe the parameter, when this method is called, should be surface.blit
 
-    def get_y(self) -> int:
-        return self.rect.y
+        if x_and_y is None:
+            # Drawing the center surface onto the image surface to create the border.
+            self.image.blit(self.center, (2, 2))
+            # Now draw the whole image to the given surface.
+            surface.blit(self.image, self.rect)
+        else:
+            self.image.blit(self.center, (2, 2))
+            surface.blit(self.image, x_and_y)
 
     def move_down(self):
         return
 
+    def get_x(self) -> int:
+        # todo - do division to return gameplay grid co-ordinate.
+        return self.rect.x
+
+    def get_y(self) -> int:
+        # todo - do division to return gameplay grid co-ordinate.
+        return self.rect.y
+
     def set_x(self):
+        # todo - Add multiplication to convert to real co-ordinate.
         return
 
     def set_y(self):
+        # todo - Add multiplication to convert to real co-ordinate.
         return
+
+    def get_block_id(self):
+        return self.ID
 
 
 class Tetromino(pygame.sprite.Sprite):
@@ -150,17 +170,117 @@ class Tetromino(pygame.sprite.Sprite):
         self.colour = random.choice(list(colours.keys()))
 
         # Integer to hold current rotation of Tetromino.
-        self.rotation = 0
+        self.current_rotation = 0
 
         # Group to hold the blocks with make up the Tetromino
         self.blocks = pygame.sprite.Group()
+
+        # Randomly assign the shape of the Tetromino.
+        self.shape = random.choice(["L", "J", "I", "T", "S", "Z", "O"])
+
+        # Dictionary containing Tetromino shapes, and their rotations.
+        self.shape_dictionary = {"L": [["-----",
+                                        "-B---",
+                                        "-B---",
+                                        "-BB--",
+                                        "-----"],
+                                       ["-----",
+                                        "BBB--",
+                                        "B----",
+                                        "-----",
+                                        "-----"],
+                                       ["-----",
+                                        "-BB--",
+                                        "--B--",
+                                        "--B--",
+                                        "-----"],
+                                       ["-----",
+                                        "---B-",
+                                        "-BBB-",
+                                        "-----",
+                                        "-----"]],
+                                 "J": [["-----",
+                                        "---B-",
+                                        "---B-",
+                                        "--BB-",
+                                        "-----"],
+                                       ["-----",
+                                        "-----",
+                                        "B----",
+                                        "BBB--",
+                                        "-----"],
+                                       ["-----",
+                                        "-BB--",
+                                        "-B---",
+                                        "-B---",
+                                        "-----"],
+                                       ["-----",
+                                        "-----",
+                                        "-BBB-",
+                                        "---B-",
+                                        "-----"]],
+                                 "I": [["-----",
+                                        "--B--",
+                                        "--B--",
+                                        "--B--",
+                                        "--B--"],
+                                       ["-----",
+                                        "-----",
+                                        "-----",
+                                        "-BBBB",
+                                        "-----"]],
+                                 "T": [["-----",
+                                        "-BBB-",
+                                        "--B--",
+                                        "-----",
+                                        "-----"],
+                                       ["-----",
+                                        "--B--",
+                                        "-BB--",
+                                        "--B--",
+                                        "-----"],
+                                       ["-----",
+                                        "--B--",
+                                        "-BBB-",
+                                        "-----",
+                                        "-----"],
+                                       ["-----",
+                                        "--B--",
+                                        "--BB-",
+                                        "--B--",
+                                        "-----"]],
+                                 "S": [["-----",
+                                        "--BB-",
+                                        "-BB--",
+                                        "-----",
+                                        "-----"],
+                                       ["-B---",
+                                        "-BB-",
+                                        "--B--",
+                                        "-----",
+                                        "-----"]],
+                                 "Z": [["-----",
+                                        "-BB--",
+                                        "--BB-",
+                                        "-----",
+                                        "-----"],
+                                       ["---B-",
+                                        "--BB-",
+                                        "--B--",
+                                        "-----",
+                                        "-----"]],
+                                 "O": [["-----",
+                                        "-BB--",
+                                        "-BB--",
+                                        "-----",
+                                        "-----"]]
+                                 }
 
         # Create the blocks
         self.create_blocks()
 
     def create_blocks(self):
         """ Creates a block and give it an ID. """
-
         for i in range(4):
             new_block = Block(self.colour, i)
             self.blocks.add(new_block)
@@ -169,30 +289,61 @@ class Tetromino(pygame.sprite.Sprite):
         return
 
     def rotate(self):
-        return
+        """ Increases and resets the current_rotation integer accordingly. """
+        if self.create_blocks() == len(self.shape_dictionary.get(self.shape)) - 1:
+            self.current_rotation = 0
+        else:
+            self.current_rotation += 1
 
     def move_left(self):
-        return
+        """ Moves the Tetromino to the left on the grid. """
+        self.rect.x -= 1 * self.block_size
 
     def move_right(self):
-        return
+        """ Moves the Tetromino to the right ont the grid. """
+        self.rect.x += 1 * self.block_size
 
-    def move_down(self):
-        return
+    def move_down(self, movement_amount):
+        """ Moves the Tetromino down the grid. """
+        # todo - try using the argument to speed up the descent
+        self.rect.y += movement_amount * self.block_size
 
-    def draw(self):
-        return
+    def draw(self, surface):
+        """ Calculates the where to draw each block, and then calls the blocks own draw() method. """
 
-    def set_x(self):
-        return
+        # i will be iterated, and will draw the correct block according to each block's ID.
+        i = 0
+        x, y = self.get_x(), self.get_y()
 
-    def set_y(self):
-        return
+        for string in self.shape_dictionary.get(self.shape)[self.current_rotation]:
+            for char in string:
+                if char == '-':
+                    x += self.block_size
+                elif char == 'B':
+                    for block in self.blocks:
+                        if i == block.get_block_id():
+                            block.draw(surface, (x, y))
+                    i += 1
+            y += self.block_size
+
+    def set_x(self, x):
+        """ Sets the X co-ordinate of the Tetromino. """
+        # todo - Add multiplication to convert to real co-ordinate.
+        self.rect.x = x
+
+    def set_y(self, y):
+        """ Sets the Y co-ordinate of the Tetromino. """
+        # todo - Add multiplication to convert to real co-ordinate.
+        self.rect.y = y
 
     def get_x(self) -> int:
+        """ Returns the X co-ordinate. """
+        # todo - Add the division so that the return Int relates to the gameplay grid.
         return self.rect.x
 
     def get_y(self) -> int:
+        """ Returns the Y co-ordinate. """
+        # todo - Add the division so that the return Int relates to the gameplay grid.
         return self.rect.y
 
 
