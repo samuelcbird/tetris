@@ -10,8 +10,8 @@ class SetupGame:
 
         self.clock = pygame.time.Clock()
         self.timer = pygame.time.get_ticks()
-        # define speed for tetromino frame rate
-        # usually 500
+        # Define speed for tetromino frame rate
+        # --- usually 500
         self.framerate = 500
         self.block = 40
         self.main_window_width_height = (22*self.block, 20*self.block)
@@ -145,6 +145,9 @@ class Hitbox(pygame.sprite.Sprite):
     def draw(self):
         surface_blit = self.game_display.blit
         surface_blit(self.image, self.rect)
+
+    def get_hitbox_rect(self) -> object:
+        return self.rect
 
 
 class Block(pygame.sprite.Sprite):
