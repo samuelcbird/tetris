@@ -11,8 +11,8 @@ class SetupGame:
         self.clock = pygame.time.Clock()
         # The timer is used to regulate the speed of gameplay.
         # self.gameplay_speed can be diminished to increase the speed of gameplay.
-        self.time = pygame.time.get_ticks()
-        self.gameplay_speed = 500
+        self.timer = pygame.time.get_ticks()
+        self.gameplay_speed = 350
 
         # Defining colours used for the background of the games windows
         self.bg_colours = {"off_white": (240, 240, 240),
@@ -28,13 +28,13 @@ class SetupGame:
         self.block_size = 40
 
         # Defining size of application window; includes peripherals eg, score and upcoming Tetromino
-        self.main_window_size = (30*self.block_size, 20*self.block_size)
+        self.main_window_size = (12*self.block_size, 22*self.block_size)
         self.main_window = pygame.display.set_mode(self.main_window_size)
         self.main_window.fill(self.bg_colours.get("light_grey"))
 
         # Creating surfaces for gameplay and the display window for the next Tetromino.
         # todo - create these surfaces
-        self.game_area = pygame.Surface((28*self.block_size, 16*self.block_size))
+        self.game_area = pygame.Surface((10*self.block_size, 18*self.block_size))
         self.game_area.fill(self.bg_colours.get("light_grey"))
 
         # Attributes to hold the appropriate Tetromino
@@ -54,10 +54,7 @@ class SetupGame:
         points = 0
         difficulty = [500, 450, 400, 350, 300, 250, 200, 150, 50]
 
-        self.a_tet = Tetromino(self.block_size, self.colours)
-        self.a_tet.set_x(10)
-        self.a_tet.set_y(5)
-        self.current_tet = self.a_tet
+        self.create_tets()
 
     def loop(self):
         self.event_handling()
@@ -67,14 +64,25 @@ class SetupGame:
         self.main_window.blit(self.game_area, (1*self.block_size, 2*self.block_size))
         self.game_area.fill(self.bg_colours.get("off_white"))
 
-        self.a_tet.draw(self.game_area)
+        if self.current_tet.y_collision(self.static_blocks.sprites()):
+            self.stop_current_tet()
+        self.current_tet.draw(self.game_area)
+        for block in self.static_blocks.sprites():
+            block.draw(self.game_area)
+        self.gravity()
 
+        self.discarded_sprites.empty()
         # Framerate
         self.clock.tick(60)
         return
 
-    def gameplay(self):
-        return
+    def create_tets(self):
+        if self.next_tet is None:
+            self.next_tet = Tetromino(self.block_size, self.colours)
+        if self.current_tet is None:
+            self.current_tet = self.next_tet
+            self.current_tet.set_starting_coordinates()
+            self.next_tet = Tetromino(self.block_size, self.colours)
 
     def event_handling(self):
         """ This handles all keyboard and mouse events from user """
@@ -95,25 +103,38 @@ class SetupGame:
                 if event.key == pygame.K_SPACE:
                     self.current_tet.rotate()
                 elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                    pass
+                    if self.current_tet.confined("left"):
+                        self.current_tet.move_left()
                 elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                    pass
+                    if self.current_tet.confined("right"):
+                        self.current_tet.move_right()
 
     def gravity(self):
-        return
+        if self.timer < (pygame.time.get_ticks() - self.gameplay_speed):
+            if self.current_tet.confined("down"):
+                self.current_tet.move_down()
+            else:
+                self.stop_current_tet()
+            self.timer = pygame.time.get_ticks()
+
+    def stop_current_tet(self):
+        self.current_tet.shrink_y_hitbox()
+        self.current_tet.add_blocks_to_group(self.static_blocks)
+        self.discarded_sprites.add(self.current_tet)
+        self.current_tet = None
+
+        self.create_tets()
 
 
-class XHitbox(pygame.sprite.Sprite):
-    """ Used for X-Axis collision detection. """
+class YHitbox(pygame.sprite.Sprite):
+    """ Used for Y-Axis collision detection. """
 
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.Surface((60, 20))
+        self.image = pygame.Surface((20, 54))
         self.rect = self.image.get_rect()
         self.image.fill((152, 251, 152))
         self.draw_hitbox = False
-
-        print("Hitbox created.")
 
     def toggle_draw(self):
         """ When called will toggle the self.draw_hitbox bool. """
@@ -124,11 +145,23 @@ class XHitbox(pygame.sprite.Sprite):
 
     def draw(self, surface, xy):
         """ Draws the Hitbox onto the given surface.
-            --- Used only for testing. """
+            --- Sets the correct position.
+            --- Draw used only for testing. """
+        self.set_x(xy[0])
+        self.set_y(xy[1])
         if self.draw_hitbox:
-            surface.blit(self.image, (xy[0], xy[1]))
+            surface.blit(self.image, self.rect)
         else:
             return
+
+    def shrink_size(self):
+        """ Reduces the size of the hitbox so that the underneath of a block won't stop the moving Tet. """
+        x, y = self.rect.x, self.rect.y
+        self.image = pygame.Surface((20, 27))
+        self.rect = self.image.get_rect()
+        self.set_x(x)
+        self.set_y(y)
+        self.image.fill((152, 251, 152))
 
     def get_hitbox_rect(self) -> object:
         return self.rect
@@ -150,13 +183,14 @@ class XHitbox(pygame.sprite.Sprite):
         self.rect.y = y
 
 
-class YHitbox(XHitbox):
-    """ Used for Y-Axis collision detection. """
+class XHitbox(YHitbox):
+    """ Used for X-Axis collision detection. """
 
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((20, 60))
+        self.image = pygame.Surface((54, 20))
         self.image.fill((43, 169, 255))
+        self.draw_hitbox = False
 
 
 class Block(pygame.sprite.Sprite):
@@ -180,10 +214,8 @@ class Block(pygame.sprite.Sprite):
 
         # Create the hitboxes.
         # -- Adjusted X and Y for their initialisation, so they're in the correct position.
-        self.x_hitbox = XHitbox()
         self.y_hitbox = YHitbox()
-
-        print("Block created.")
+        self.x_hitbox = XHitbox()
 
     def draw(self, surface, x_and_y=None):
         """ Draws the block on the given surface and at the given co-ordinates.
@@ -195,7 +227,8 @@ class Block(pygame.sprite.Sprite):
             # Drawing the center surface onto the image surface to create the border.
             self.image.blit(self.center, (2, 2))
             # Now draw the whole image to the given surface.
-            surface.blit(self.image, self.rect)
+            x, y = self.get_x(True), self.get_y(True)
+            surface.blit(self.image, [x, y])
         else:
             self.set_x(x_and_y[0], True)
             self.set_y(x_and_y[1], True)
@@ -203,15 +236,9 @@ class Block(pygame.sprite.Sprite):
             surface.blit(self.image, self.rect)
 
         # Draw the hitboxes
-        self.x_hitbox.draw(surface, [self.get_x(True)-10, self.get_y(True)+10])
-        self.y_hitbox.draw(surface, [self.get_x(True)+10, self.get_y(True)-10])
-
-    def x_collision_detection(self, group) -> bool:
-        """ Iterates through a group of blocks, and returns true if the block has collided with any
-            other other block on the X axis. """
-        for block in group:
-            if self.x_hitbox.rect.colliderect(block.x_hitbox.get_hitbox_rect()):
-                return True
+        self.y_hitbox.draw(surface, [self.get_x(True)+10, self.get_y(True)-7])
+        self.x_hitbox.draw(surface, [self.get_x(True)-7, self.get_y(True)+10])
+        # todo - this won't work, there need to be two X hitboxes: left and right.
 
     def y_collision_detection(self, group) -> bool:
         """ Iterates through a group of blocks, and returns true if the block has collided with any
@@ -220,8 +247,19 @@ class Block(pygame.sprite.Sprite):
             if self.y_hitbox.rect.colliderect(block.y_hitbox.get_hitbox_rect()):
                 return True
 
+    def x_collision_detection(self, group) -> bool:
+        """ Iterates through a group of blocks, and returns true if the block has collided with any
+            other other block on the Y axis. """
+        for block in group:
+            if self.x_hitbox.rect.colliderect(block.x_hitbox.get_hitbox_rect()):
+                return True
+
     def move_down(self):
         return
+
+    def shrink_hitbox(self):
+        """ Calls the Y hitbox's shrink_size() method. """
+        self.y_hitbox.shrink_size()
 
     def get_x(self, return_raw_data=False) -> int:
         """ Returns the X co-ordinate of the Block. """
@@ -277,7 +315,6 @@ class Tetromino(pygame.sprite.Sprite):
 
         # Randomly assign the shape of the Tetromino.
         self.shape = random.choice(["L", "J", "I", "T", "S", "Z", "O"])
-        print(self.shape)
 
         # Dictionary containing Tetromino shapes, and their rotations.
         self.shape_dictionary = {"L": [["-----",
@@ -380,23 +417,42 @@ class Tetromino(pygame.sprite.Sprite):
         # Create the blocks
         self.create_blocks()
 
-        print("Tet created.")
-
     def create_blocks(self):
         """ Creates a block and give it an ID. """
         for i in range(4):
             new_block = Block(self.colour, i, self.block_size)
             self.blocks.add(new_block)
 
-    def x_collision_detection(self, static_tetrominoes) -> bool:
-        for block in self.blocks:
+    def set_starting_coordinates(self):
+        """ Randomly chooses the X coordinate and sets the Tetrominoes coordinates. """
+        done = False
+        while not done:
+            self.set_x(random.choice(range(-1, 9)))
+            for block in self.blocks.sprites():
+                if block.get_x() > 9:
+                    continue
+            done = True
+        self.set_y(-3)
+
+    def y_collision(self, static_tetrominoes) -> bool:
+
+        for block in self.blocks.sprites():
+            if block.y_collision_detection(static_tetrominoes):
+                return True
+
+    def x_collision(self, static_tetrominoes) -> bool:
+        for block in self.blocks.sprites():
             if block.x_collision_detection(static_tetrominoes):
                 return True
 
-    def y_collision_detection(self, static_tetrominoes) -> bool:
-        for block in self.blocks:
-            if block.y_collision_detection(static_tetrominoes):
-                return True
+    def shrink_y_hitbox(self):
+        """ Calls the shrink method of the Y hitbox for each block. """
+        for block in self.blocks.sprites():
+            block.shrink_hitbox()
+
+    def add_blocks_to_group(self, group):
+        for block in self.blocks.sprites():
+            group.add(block)
 
     def rotate(self):
         """ Increases and resets the current_rotation integer accordingly. """
@@ -413,10 +469,22 @@ class Tetromino(pygame.sprite.Sprite):
         """ Moves the Tetromino to the right on the grid. """
         self.rect.x += 1 * self.block_size
 
-    def move_down(self, movement_amount):
+    def move_down(self, movement_amount=1):
         """ Moves the Tetromino down the grid. """
         # todo - try using the argument to speed up the descent
         self.rect.y += movement_amount * self.block_size
+
+    def confined(self, direction) -> bool:
+        """ Returns true unless a block is heading outside of the game area. """
+        for block in self.blocks.sprites():
+            x, y = block.get_x(), block.get_y()
+            if direction == "down" and y >= 17:
+                return False
+            elif direction == "left" and x <= 0:
+                return False
+            elif direction == "right" and x >= 9:
+                return False
+        return True
 
     def draw(self, surface):
         """ Calculates the where to draw each block, and then calls the blocks own draw() method. """
