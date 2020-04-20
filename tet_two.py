@@ -13,6 +13,8 @@ class SetupGame:
         # self.gameplay_speed can be diminished to increase the speed of gameplay.
         self.timer = pygame.time.get_ticks()
         self.gameplay_speed = 350
+        # For when the down arrow is pressed
+        self.increase_speed = False
 
         # Defining colours used for the background of the games windows
         self.bg_colours = {"off_white": (240, 240, 240),
@@ -100,14 +102,22 @@ class SetupGame:
             elif event.type == pygame.MOUSEBUTTONUP:
                 pass
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN or event.key == pygame.K_s:
+                    self.toggle_gravity_speed()
                 if event.key == pygame.K_SPACE:
                     self.current_tet.rotate()
+                elif event.key == pygame.K_LEFTBRACKET:
+                    YHitbox.toggle_draw()
+                elif event.key == pygame.K_RIGHTBRACKET:
+                    XHitbox.toggle_draw()
                 elif event.key == pygame.K_LEFT or event.key == pygame.K_a:
-                    if self.current_tet.confined("left"):
-                        self.current_tet.move_left()
+                    if not self.current_tet.x_collision('left', self.static_blocks):
+                        if self.current_tet.confined('left'):
+                            self.current_tet.move_left()
                 elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
-                    if self.current_tet.confined("right"):
-                        self.current_tet.move_right()
+                    if not self.current_tet.x_collision('right', self.static_blocks):
+                        if self.current_tet.confined('right'):
+                            self.current_tet.move_right()
 
     def gravity(self):
         if self.timer < (pygame.time.get_ticks() - self.gameplay_speed):
@@ -117,31 +127,43 @@ class SetupGame:
                 self.stop_current_tet()
             self.timer = pygame.time.get_ticks()
 
+    def toggle_gravity_speed(self):
+        if self.increase_speed:
+            self.gameplay_speed += 500
+            self.increase_speed = False
+        else:
+            self.gameplay_speed -= 500
+            self.increase_speed = True
+
     def stop_current_tet(self):
         self.current_tet.shrink_y_hitbox()
         self.current_tet.add_blocks_to_group(self.static_blocks)
         self.discarded_sprites.add(self.current_tet)
         self.current_tet = None
 
+        self.toggle_gravity_speed()
         self.create_tets()
 
 
 class YHitbox(pygame.sprite.Sprite):
     """ Used for Y-Axis collision detection. """
 
+    draw_hitbox = False
+
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface((20, 54))
         self.rect = self.image.get_rect()
         self.image.fill((152, 251, 152))
-        self.draw_hitbox = False
+        # self.draw_hitbox = False
 
-    def toggle_draw(self):
+    @classmethod
+    def toggle_draw(cls):
         """ When called will toggle the self.draw_hitbox bool. """
-        if self.draw_hitbox:
-            self.draw_hitbox = False
+        if cls.draw_hitbox:
+            cls.draw_hitbox = False
         else:
-            self.draw_hitbox = True
+            cls.draw_hitbox = True
 
     def draw(self, surface, xy):
         """ Draws the Hitbox onto the given surface.
@@ -186,11 +208,12 @@ class YHitbox(pygame.sprite.Sprite):
 class XHitbox(YHitbox):
     """ Used for X-Axis collision detection. """
 
+    draw_hitbox = False
+
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((54, 20))
+        self.image = pygame.Surface((20, 20))
         self.image.fill((43, 169, 255))
-        self.draw_hitbox = False
 
 
 class Block(pygame.sprite.Sprite):
@@ -213,9 +236,9 @@ class Block(pygame.sprite.Sprite):
         self.center.fill(self.light)
 
         # Create the hitboxes.
-        # -- Adjusted X and Y for their initialisation, so they're in the correct position.
         self.y_hitbox = YHitbox()
-        self.x_hitbox = XHitbox()
+        self.left_x_hitbox = XHitbox()
+        self.right_x_hitbox = XHitbox()
 
     def draw(self, surface, x_and_y=None):
         """ Draws the block on the given surface and at the given co-ordinates.
@@ -237,8 +260,8 @@ class Block(pygame.sprite.Sprite):
 
         # Draw the hitboxes
         self.y_hitbox.draw(surface, [self.get_x(True)+10, self.get_y(True)-7])
-        self.x_hitbox.draw(surface, [self.get_x(True)-7, self.get_y(True)+10])
-        # todo - this won't work, there need to be two X hitboxes: left and right.
+        self.left_x_hitbox.draw(surface, [self.get_x(True) - 7, self.get_y(True) + 10])
+        self.right_x_hitbox.draw(surface, [self.get_x(True) + 28, self.get_y(True) + 10])
 
     def y_collision_detection(self, group) -> bool:
         """ Iterates through a group of blocks, and returns true if the block has collided with any
@@ -247,12 +270,17 @@ class Block(pygame.sprite.Sprite):
             if self.y_hitbox.rect.colliderect(block.y_hitbox.get_hitbox_rect()):
                 return True
 
-    def x_collision_detection(self, group) -> bool:
+    def x_collision_detection(self, direction, group) -> bool:
         """ Iterates through a group of blocks, and returns true if the block has collided with any
             other other block on the Y axis. """
-        for block in group:
-            if self.x_hitbox.rect.colliderect(block.x_hitbox.get_hitbox_rect()):
-                return True
+        if direction == "left":
+            for block in group:
+                if self.left_x_hitbox.rect.colliderect(block.right_x_hitbox.get_hitbox_rect()):
+                    return True
+        elif direction == "right":
+            for block in group:
+                if self.right_x_hitbox.rect.colliderect(block.left_x_hitbox.get_hitbox_rect()):
+                    return True
 
     def move_down(self):
         return
@@ -440,9 +468,9 @@ class Tetromino(pygame.sprite.Sprite):
             if block.y_collision_detection(static_tetrominoes):
                 return True
 
-    def x_collision(self, static_tetrominoes) -> bool:
+    def x_collision(self, direction, static_tetrominoes) -> bool:
         for block in self.blocks.sprites():
-            if block.x_collision_detection(static_tetrominoes):
+            if block.x_collision_detection(direction, static_tetrominoes):
                 return True
 
     def shrink_y_hitbox(self):
