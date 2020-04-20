@@ -12,9 +12,6 @@ class SetupGame:
         # The timer is used to regulate the speed of gameplay.
         # self.gameplay_speed can be diminished to increase the speed of gameplay.
         self.timer = pygame.time.get_ticks()
-        self.gameplay_speed = 350
-        # For when the down arrow is pressed
-        self.increase_speed = False
 
         # Defining colours used for the background of the games windows
         self.bg_colours = {"off_white": (240, 240, 240),
@@ -35,11 +32,21 @@ class SetupGame:
         self.main_window.fill(self.bg_colours.get("light_grey"))
 
         # Creating surfaces for gameplay and the display window for the next Tetromino.
-        # todo - create these surfaces
         self.game_area = pygame.Surface((10*self.block_size, 18*self.block_size))
         self.game_area.fill(self.bg_colours.get("off_white"))
         self.next_tet_window = pygame.Surface((5*self.block_size, 5*self.block_size))
         self.next_tet_window.fill(self.bg_colours.get("off_white"))
+
+        # Set up scoring for game
+        self.score = Scoring(self.main_window, self.block_size, self.bg_colours)
+
+        # Set speed by level of game
+        self.difficulty = [500, 450, 400, 350, 300, 250, 200, 150, 50]
+        self.gameplay_speed = self.difficulty[(self.score.get_level())]
+        # For when the down arrow is pressed
+        self.increase_speed = False
+        self.game_over = False
+        self.game_over_text = None
 
         # Attributes to hold the appropriate Tetromino
         self.current_tet = None
@@ -51,20 +58,16 @@ class SetupGame:
         # -- Anything in this group will be deleted during each iteration of the loop.
         self.discarded_sprites = pygame.sprite.Group()
 
-        # An integer attribute to hold the points for the current game
-        # A list attribute to control the increasing difficulty of the game
-        # -- Integers will be used as the self.gameplay_speed attribute.
-        # todo - think through the logistics of points and increasing difficulty
-        points = 0
-        difficulty = [500, 450, 400, 350, 300, 250, 200, 150, 50]
-
         self.create_tets()
 
     def loop(self):
         self.event_handling()
         pygame.display.update()
 
+        self.gameplay_speed = self.difficulty[(self.score.get_level())]
+
         # Draw the game area and fill with background colour.
+        self.main_window.fill(self.bg_colours.get('light_grey'))
         self.main_window.blit(self.game_area, (1*self.block_size, 2*self.block_size))
         self.main_window.blit(self.next_tet_window, (12*self.block_size, 2*self.block_size))
         self.game_area.fill(self.bg_colours.get('off_white'))
@@ -76,9 +79,17 @@ class SetupGame:
         self.next_tet.draw(self.next_tet_window)
         for block in self.static_blocks.sprites():
             block.draw(self.game_area)
+        self.score.draw()
+
         self.gravity()
 
         self.check_line_completion()
+
+        if self.check_for_game_over():
+            if self.game_over_text is None:
+                self.game_over_text = GameOver(self.game_area, self.block_size, self.bg_colours)
+            # todo - not working
+            self.game_over_text.draw()
 
         self.discarded_sprites.empty()
         # Framerate
@@ -116,6 +127,10 @@ class SetupGame:
                         self.toggle_gravity_speed()
                 if event.key == pygame.K_SPACE:
                     self.current_tet.rotate()
+                elif event.key == pygame.K_o:
+                    pass
+                elif event.key == pygame.K_p:
+                    self.score.increase_level()
                 elif event.key == pygame.K_LEFTBRACKET:
                     YHitbox.toggle_draw()
                 elif event.key == pygame.K_RIGHTBRACKET:
@@ -130,14 +145,18 @@ class SetupGame:
                             self.current_tet.move_right()
 
     def gravity(self):
-        if self.timer < (pygame.time.get_ticks() - self.gameplay_speed):
-            if self.current_tet.confined("down"):
-                self.current_tet.move_down()
-            else:
-                self.stop_current_tet()
-            self.timer = pygame.time.get_ticks()
+        if self.game_over_text is None:
+            if self.timer < (pygame.time.get_ticks() - self.gameplay_speed):
+                if self.current_tet.confined("down"):
+                    self.current_tet.move_down()
+                else:
+                    self.stop_current_tet()
+                self.timer = pygame.time.get_ticks()
 
     def toggle_gravity_speed(self):
+
+        # todo - now not working
+
         if self.increase_speed:
             self.gameplay_speed += 500
             self.increase_speed = False
@@ -148,15 +167,17 @@ class SetupGame:
     def check_line_completion(self):
         """ Checks for line completion. """
         array_of_blocks_in_line = []
-        lines_to_clear = []
+        lines_to_clear = 0
         for i in range(18):
             for block in self.static_blocks.sprites():
                 if block.get_y() == i:
                     array_of_blocks_in_line.append(block)
                 if len(array_of_blocks_in_line) >= 10:
+                    lines_to_clear += 1
                     self.remove_blocks(array_of_blocks_in_line)
                     array_of_blocks_in_line.clear()
                     self.move_blocks_down(i)
+                    self.score.increase_score(lines_to_clear)
             array_of_blocks_in_line.clear()
 
     def remove_blocks(self, array_of_blocks):
@@ -171,6 +192,13 @@ class SetupGame:
             if y <= above_this_line:
                 block.move_down()
 
+    def check_for_game_over(self):
+        """ Checks if any static block has reached the top of the game area. """
+        for block in self.static_blocks.sprites():
+            if block.get_y() <= 1:
+                self.game_over = True
+        return self.game_over
+
     def stop_current_tet(self):
         """ Shrinks the hitbox, stops the tet, removes the blocks and adds to static_blocks, and discards the tet.
             Set's current_tet to None so when create_tets() is called the game will progress.
@@ -182,6 +210,89 @@ class SetupGame:
 
         self.toggle_gravity_speed()
         self.create_tets()
+
+
+class DisplayText:
+
+    def __init__(self, block_size, colours, xy):
+        self.colours = colours
+        pygame.font.init()
+        default_font = pygame.font.get_default_font()
+        self.font = pygame.font.Font(default_font, 20)
+
+        self.text = self.display('')
+        self.rect = self.text.get_rect()
+        x, y = xy
+        self.rect.x = x * block_size
+        self.rect.y = y * block_size
+
+    def display(self, text):
+        return self.font.render(text, True, self.colours.get('dark_grey'))
+
+    def draw(self, surface, text_obj):
+        self.text = text_obj
+        surface.blit(self.text, self.rect)
+
+
+class Scoring:
+
+    def __init__(self, surface, block_size, colours):
+        self.surface = surface
+        self.score = 0
+        self.score_text = DisplayText(block_size, colours, (8, 1))
+        self.level = 1
+        self.level_text = DisplayText(block_size, colours, (1, 1))
+
+        self.lines_cleared_iterator = 0
+
+        self.scores = {'1': [40, 100, 300, 1200],
+                       '2': [80, 200, 600, 2400],
+                       '9': [400, 1000, 3000, 3600]}
+
+    def increase_score(self, lines_cleared):
+        """ Increases score depending on level and lines cleared. """
+
+        # Increases level after 10 lines have been cleared.
+        self.lines_cleared_iterator += lines_cleared
+        if self.lines_cleared_iterator >= 10:
+            self.increase_level()
+            self.lines_cleared_iterator = 0
+
+        # Code a little arbitrary, needs closer inspection
+        if self.level == 1 or self.level == 2:
+            if lines_cleared >= len(self.scores.get('1'))+1:
+                self.score += self.scores.get(str(self.get_level))[3]
+            else:
+                self.score += self.scores.get(str(self.level))[lines_cleared-1]
+        elif 2 < self.level < 10:
+            self.score += self.scores.get(str(self.level))[lines_cleared+1]
+
+    def increase_level(self):
+        """ Increases level by 1. """
+        self.level += 1
+
+    def draw(self):
+        score_obj = self.score_text.display(str(self.score))
+        level_obj = self.level_text.display(str(self.level))
+
+        self.score_text.draw(self.surface, score_obj)
+        self.level_text.draw(self.surface, level_obj)
+
+    def get_level(self) -> int:
+        return self.level
+
+
+class GameOver:
+
+    def __init__(self, surface, block_size, colours):
+        self.block_size = block_size
+        self.colours = colours
+        self.surface = surface
+
+        self.text = DisplayText(self.block_size, self.colours, (10, 9))
+
+    def draw(self):
+        text_obj = self.text.display("GAME OVER")
 
 
 class YHitbox(pygame.sprite.Sprite):
@@ -498,9 +609,10 @@ class Tetromino(pygame.sprite.Sprite):
         while not done:
             self.set_x(random.choice(range(-1, 9)))
             for block in self.blocks.sprites():
-                if block.get_x() > 9:
+                if block.get_x() >= 9:
                     continue
-            done = True
+                else:
+                    done = True
         self.set_y(-3)
 
     def y_collision(self, static_tetrominoes) -> bool:
