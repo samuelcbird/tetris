@@ -30,14 +30,16 @@ class SetupGame:
         self.block_size = 40
 
         # Defining size of application window; includes peripherals eg, score and upcoming Tetromino
-        self.main_window_size = (12*self.block_size, 22*self.block_size)
+        self.main_window_size = (18*self.block_size, 22*self.block_size)
         self.main_window = pygame.display.set_mode(self.main_window_size)
         self.main_window.fill(self.bg_colours.get("light_grey"))
 
         # Creating surfaces for gameplay and the display window for the next Tetromino.
         # todo - create these surfaces
         self.game_area = pygame.Surface((10*self.block_size, 18*self.block_size))
-        self.game_area.fill(self.bg_colours.get("light_grey"))
+        self.game_area.fill(self.bg_colours.get("off_white"))
+        self.next_tet_window = pygame.Surface((5*self.block_size, 5*self.block_size))
+        self.next_tet_window.fill(self.bg_colours.get("off_white"))
 
         # Attributes to hold the appropriate Tetromino
         self.current_tet = None
@@ -64,14 +66,19 @@ class SetupGame:
 
         # Draw the game area and fill with background colour.
         self.main_window.blit(self.game_area, (1*self.block_size, 2*self.block_size))
-        self.game_area.fill(self.bg_colours.get("off_white"))
+        self.main_window.blit(self.next_tet_window, (12*self.block_size, 2*self.block_size))
+        self.game_area.fill(self.bg_colours.get('off_white'))
+        self.next_tet_window.fill(self.bg_colours.get('off_white'))
 
         if self.current_tet.y_collision(self.static_blocks.sprites()):
             self.stop_current_tet()
         self.current_tet.draw(self.game_area)
+        self.next_tet.draw(self.next_tet_window)
         for block in self.static_blocks.sprites():
             block.draw(self.game_area)
         self.gravity()
+
+        self.check_line_completion()
 
         self.discarded_sprites.empty()
         # Framerate
@@ -103,7 +110,10 @@ class SetupGame:
                 pass
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_DOWN or event.key == pygame.K_s:
-                    self.toggle_gravity_speed()
+                    if self.increase_speed:
+                        pass
+                    else:
+                        self.toggle_gravity_speed()
                 if event.key == pygame.K_SPACE:
                     self.current_tet.rotate()
                 elif event.key == pygame.K_LEFTBRACKET:
@@ -135,7 +145,36 @@ class SetupGame:
             self.gameplay_speed -= 500
             self.increase_speed = True
 
+    def check_line_completion(self):
+        """ Checks for line completion. """
+        array_of_blocks_in_line = []
+        lines_to_clear = []
+        for i in range(18):
+            for block in self.static_blocks.sprites():
+                if block.get_y() == i:
+                    array_of_blocks_in_line.append(block)
+                if len(array_of_blocks_in_line) >= 10:
+                    self.remove_blocks(array_of_blocks_in_line)
+                    array_of_blocks_in_line.clear()
+                    self.move_blocks_down(i)
+            array_of_blocks_in_line.clear()
+
+    def remove_blocks(self, array_of_blocks):
+        """ Removes blocks in the given array from the game. """
+        for bloc in array_of_blocks:
+            self.discarded_sprites.add(bloc)
+            self.static_blocks.remove(bloc)
+
+    def move_blocks_down(self, above_this_line):
+        for block in self.static_blocks.sprites():
+            y = block.get_y()
+            if y <= above_this_line:
+                block.move_down()
+
     def stop_current_tet(self):
+        """ Shrinks the hitbox, stops the tet, removes the blocks and adds to static_blocks, and discards the tet.
+            Set's current_tet to None so when create_tets() is called the game will progress.
+            Toggles the fast gravity it the down arrow has been used. """
         self.current_tet.shrink_y_hitbox()
         self.current_tet.add_blocks_to_group(self.static_blocks)
         self.discarded_sprites.add(self.current_tet)
@@ -283,7 +322,7 @@ class Block(pygame.sprite.Sprite):
                     return True
 
     def move_down(self):
-        return
+        self.rect.y += self.block_size
 
     def shrink_hitbox(self):
         """ Calls the Y hitbox's shrink_size() method. """
@@ -331,6 +370,8 @@ class Tetromino(pygame.sprite.Sprite):
         # Surface is (160, 160) because the shape templates are that big.
         self.image = pygame.Surface((160, 160))
         self.rect = self.image.get_rect()
+        self.set_x(0)
+        self.set_y(0)
 
         # Pick a random colour for the Tetromino
         self.colour = colours.get(random.choice(list(colours.keys())))
@@ -497,10 +538,9 @@ class Tetromino(pygame.sprite.Sprite):
         """ Moves the Tetromino to the right on the grid. """
         self.rect.x += 1 * self.block_size
 
-    def move_down(self, movement_amount=1):
+    def move_down(self):
         """ Moves the Tetromino down the grid. """
-        # todo - try using the argument to speed up the descent
-        self.rect.y += movement_amount * self.block_size
+        self.rect.y += self.block_size
 
     def confined(self, direction) -> bool:
         """ Returns true unless a block is heading outside of the game area. """
