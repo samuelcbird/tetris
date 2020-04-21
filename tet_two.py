@@ -158,10 +158,10 @@ class SetupGame:
         # todo - now not working
 
         if self.increase_speed:
-            self.gameplay_speed += 500
+            self.difficulty[(self.score.get_level())] += 500
             self.increase_speed = False
         else:
-            self.gameplay_speed -= 500
+            self.difficulty[(self.score.get_level())] -= 500
             self.increase_speed = True
 
     def check_line_completion(self):
@@ -265,7 +265,7 @@ class Scoring:
             else:
                 self.score += self.scores.get(str(self.level))[lines_cleared-1]
         elif 2 < self.level < 10:
-            self.score += self.scores.get(str(self.level))[lines_cleared+1]
+            self.score += self.scores.get(str(self.level))[lines_cleared-1]
 
     def increase_level(self):
         """ Increases level by 1. """
@@ -293,6 +293,7 @@ class GameOver:
 
     def draw(self):
         text_obj = self.text.display("GAME OVER")
+        self.text.draw(self.surface, text_obj)
 
 
 class YHitbox(pygame.sprite.Sprite):
@@ -608,15 +609,14 @@ class Tetromino(pygame.sprite.Sprite):
         done = False
         while not done:
             self.set_x(random.choice(range(-1, 9)))
-            for block in self.blocks.sprites():
-                if block.get_x() >= 9:
-                    continue
-                else:
-                    done = True
+            # todo - something really wrong here...
+            if self.is_outside_game_area():
+                continue
+            else:
+                done = True
         self.set_y(-3)
 
     def y_collision(self, static_tetrominoes) -> bool:
-
         for block in self.blocks.sprites():
             if block.y_collision_detection(static_tetrominoes):
                 return True
@@ -653,6 +653,12 @@ class Tetromino(pygame.sprite.Sprite):
     def move_down(self):
         """ Moves the Tetromino down the grid. """
         self.rect.y += self.block_size
+
+    def is_outside_game_area(self):
+        # todo - something really wrong here...
+        for block in self.blocks.sprites():
+            if block.get_x(True) >= 360:
+                return True
 
     def confined(self, direction) -> bool:
         """ Returns true unless a block is heading outside of the game area. """
