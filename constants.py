@@ -1,5 +1,4 @@
-
-# Backgroud colours
+# Background colours
 BG_COLOURS = {"off_white": (240, 240, 240),
               "light_grey": (192, 192, 192),
               "dark_grey": (10, 10, 10)}

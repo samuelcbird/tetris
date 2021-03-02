@@ -1,6 +1,8 @@
 import pygame
-import constants
 import random
+import constants
+import scoring
+from typing import Union, Any, List, Set, Dict, Tuple, Optional
 
 
 class SetupGame:
@@ -9,47 +11,47 @@ class SetupGame:
     def __init__(self):
         pygame.init()
 
-        self.clock = pygame.time.Clock()
+        self.clock: pygame.time.Clock = pygame.time.Clock()
         # The timer is used to regulate the speed of gameplay.
         # self.gameplay_speed can be diminished to increase the speed of gameplay.
-        self.timer = pygame.time.get_ticks()
+        self.timer: int = pygame.time.get_ticks()
 
         # Defining size of application window; includes peripherals eg, score and upcoming Tetromino
-        self.main_window_size = (18*constants.BLOCK_SIZE, 22*constants.BLOCK_SIZE)
-        self.main_window = pygame.display.set_mode(self.main_window_size)
+        self.main_window_size: Tuple = (18*constants.BLOCK_SIZE, 22*constants.BLOCK_SIZE)
+        self.main_window: pygame.Surface = pygame.display.set_mode(self.main_window_size)
         self.main_window.fill(constants.BG_COLOURS.get("light_grey"))
         pygame.display.set_caption("Tetris")
 
         # Creating surfaces for gameplay and the display window for the next Tetromino.
-        self.game_area = pygame.Surface((10*constants.BLOCK_SIZE, 18*constants.BLOCK_SIZE))
+        self.game_area: pygame.Surface = pygame.Surface((10*constants.BLOCK_SIZE, 18*constants.BLOCK_SIZE))
         self.game_area.fill(constants.BG_COLOURS.get("off_white"))
-        self.next_tetromino_window = pygame.Surface((5 * constants.BLOCK_SIZE, 5 * constants.BLOCK_SIZE))
+        self.next_tetromino_window: pygame.Surface = pygame.Surface((5*constants.BLOCK_SIZE, 5*constants.BLOCK_SIZE))
         self.next_tetromino_window.fill(constants.BG_COLOURS.get("off_white"))
 
         # Set up scoring for game
-        self.score = Scoring(self.main_window)
+        self.score: scoring.Scoring = scoring.Scoring(self.main_window)
 
         # Set speed by level of game
-        self.difficulty = [500, 450, 400, 350, 300, 250, 200, 150, 50]
-        self.gameplay_speed = self.difficulty[(self.score.get_level())]
+        self.difficulty: List[int] = [500, 450, 400, 350, 300, 250, 200, 150, 50]
+        self.gameplay_speed: int = self.difficulty[(self.score.get_level())]
         # For when the down arrow is pressed
-        self.increase_speed = False
-        self.game_over = False
-        self.game_over_text = None
+        self.increase_speed: bool = False
+        self.game_over: bool = False
+        self.game_over_text: Optional[str] = None
 
         # Attributes to hold the appropriate Tetromino
-        self.current_tetromino = None
-        self.next_tetromino = None
+        self.current_tetromino: Optional[Tetromino] = None
+        self.next_tetromino: Optional[Tetromino] = None
         # A group to hold all the blocks once they become static
         # -- After the Tetromino is stationary the Blocks will be removed and the Tetromino will be discarded.
-        self.static_blocks = pygame.sprite.Group()
+        self.static_blocks: pygame.sprite.Group = pygame.sprite.Group()
         # A group to hold any sprite that has been discarded (blocks, tetrominoes, hitboxes).
         # -- Anything in this group will be deleted during each iteration of the loop.
-        self.discarded_sprites = pygame.sprite.Group()
+        self.discarded_sprites: pygame.sprite.Group = pygame.sprite.Group()
 
         self.create_tets()
 
-    def loop(self):
+    def loop(self) -> None:
         self.event_handling()
         pygame.display.update()
 
@@ -142,8 +144,6 @@ class SetupGame:
 
     def toggle_gravity_speed(self):
 
-        # todo - now not working
-
         if self.increase_speed:
             self.difficulty[(self.score.get_level())] += 500
             self.increase_speed = False
@@ -179,7 +179,7 @@ class SetupGame:
             if y <= above_this_line:
                 block.move_down()
 
-    def check_for_game_over(self):
+    def check_for_game_over(self) -> bool:
         """ Checks if any static block has reached the top of the game area. """
         for block in self.static_blocks.sprites():
             if block.get_y() <= 1:
@@ -201,9 +201,9 @@ class SetupGame:
 
 class DisplayText:
 
-    def __init__(self, xy):
+    def __init__(self, xy: tuple):
         pygame.font.init()
-        default_font = pygame.font.get_default_font()
+        default_font: str = pygame.font.get_default_font()
         self.font = pygame.font.Font(default_font, 20)
 
         self.text = self.display('')
@@ -218,54 +218,6 @@ class DisplayText:
     def draw(self, surface, text_obj):
         self.text = text_obj
         surface.blit(self.text, self.rect)
-
-
-class Scoring:
-
-    def __init__(self, surface):
-        self.surface = surface
-        self.score = 0
-        self.score_text = DisplayText((8, 1))
-        self.level = 1
-        self.level_text = DisplayText((1, 1))
-
-        self.lines_cleared_iterator = 0
-
-        self.scores = {'1': [40, 100, 300, 1200],
-                       '2': [80, 200, 600, 2400],
-                       '9': [400, 1000, 3000, 3600]}
-
-    def increase_score(self, lines_cleared):
-        """ Increases score depending on level and lines cleared. """
-
-        # Increases level after 10 lines have been cleared.
-        self.lines_cleared_iterator += lines_cleared
-        if self.lines_cleared_iterator >= 10:
-            self.increase_level()
-            self.lines_cleared_iterator = 0
-
-        # Code a little arbitrary, needs closer inspection
-        if self.level == 1 or self.level == 2:
-            if lines_cleared >= len(self.scores.get('1'))+1:
-                self.score += self.scores.get(str(self.get_level))[3]
-            else:
-                self.score += self.scores.get(str(self.level))[lines_cleared-1]
-        elif 2 < self.level < 10:
-            self.score += self.scores.get(str(self.level))[lines_cleared-1]
-
-    def increase_level(self):
-        """ Increases level by 1. """
-        self.level += 1
-
-    def draw(self):
-        score_obj = self.score_text.display(str(self.score))
-        level_obj = self.level_text.display(str(self.level))
-
-        self.score_text.draw(self.surface, score_obj)
-        self.level_text.draw(self.surface, level_obj)
-
-    def get_level(self) -> int:
-        return self.level
 
 
 class GameOver:
@@ -332,11 +284,11 @@ class YHitbox(pygame.sprite.Sprite):
         """ Returns the Y co-ordinate of the Hitbox. """
         return self.rect.y
 
-    def set_x(self, x):
+    def set_x(self, x) -> None:
         """ Sets the X co-ordinate of the Hitbox. """
         self.rect.x = x
 
-    def set_y(self, y):
+    def set_y(self, y) -> None:
         """ Sets the Y co-ordinate of the Hitbox. """
         self.rect.y = y
 
@@ -374,7 +326,7 @@ class Block(pygame.sprite.Sprite):
         self.left_x_hitbox = XHitbox()
         self.right_x_hitbox = XHitbox()
 
-    def draw(self, surface, x_and_y=None):
+    def draw(self, surface: pygame.Surface, x_and_y: Optional[list] = None):
         """ Draws the block on the given surface and at the given co-ordinates.
             --- If the x_and_y argument is None, the block is no longer part of a Tetromino,
                 and should be drawn at the co-ordinates it currently occupies.
@@ -397,14 +349,14 @@ class Block(pygame.sprite.Sprite):
         self.left_x_hitbox.draw(surface, [self.get_x(True) - 7, self.get_y(True) + 10])
         self.right_x_hitbox.draw(surface, [self.get_x(True) + 28, self.get_y(True) + 10])
 
-    def y_collision_detection(self, group) -> bool:
+    def y_collision_detection(self, group: pygame.sprite.Group) -> bool:
         """ Iterates through a group of blocks, and returns true if the block has collided with any
             other other block on the Y axis. """
         for block in group:
             if self.y_hitbox.rect.colliderect(block.y_hitbox.get_hitbox_rect()):
                 return True
 
-    def x_collision_detection(self, direction, group) -> bool:
+    def x_collision_detection(self, direction: str, group: pygame.sprite.Group) -> bool:
         """ Iterates through a group of blocks, and returns true if the block has collided with any
             other other block on the Y axis. """
         if direction == "left":
@@ -416,35 +368,35 @@ class Block(pygame.sprite.Sprite):
                 if self.right_x_hitbox.rect.colliderect(block.left_x_hitbox.get_hitbox_rect()):
                     return True
 
-    def move_down(self):
+    def move_down(self) -> None:
         self.rect.y += constants.BLOCK_SIZE
 
-    def shrink_hitbox(self):
+    def shrink_hitbox(self) -> None:
         """ Calls the Y hitbox's shrink_size() method. """
         self.y_hitbox.shrink_size()
 
-    def get_x(self, return_raw_data=False) -> int:
+    def get_x(self, return_raw_data: bool = False) -> int:
         """ Returns the X co-ordinate of the Block. """
         if return_raw_data:
             return self.rect.x
         else:
             return self.rect.x // constants.BLOCK_SIZE
 
-    def get_y(self, return_raw_data=False) -> int:
+    def get_y(self, return_raw_data: bool = False) -> int:
         """ Returns the Y co-ordinate of the Block. """
         if return_raw_data:
             return self.rect.y
         else:
             return self.rect.y // constants.BLOCK_SIZE
 
-    def set_x(self, x, parse_raw_data=False):
+    def set_x(self, x, parse_raw_data: bool = False) -> None:
         """ Sets the X co-ordinate of the Block. """
         if parse_raw_data:
             self.rect.x = x
         else:
             self.rect.x = x * constants.BLOCK_SIZE
 
-    def set_y(self, y, parse_raw_data=False):
+    def set_y(self, y, parse_raw_data: bool = False) -> None:
         """ Sets the Y co-ordinate of the Block. """
         if parse_raw_data:
             self.rect.y = y
@@ -468,29 +420,29 @@ class Tetromino(pygame.sprite.Sprite):
         self.set_y(0)
 
         # Pick a random colour for the Tetromino
-        self.colour = constants.COLOURS.get(random.choice(list(constants.COLOURS.keys())))
+        self.colour: tuple = constants.COLOURS.get(random.choice(list(constants.COLOURS.keys())))
 
         # Integer to hold current rotation of Tetromino.
-        self.current_rotation = 0
+        self.current_rotation: int = 0
 
         # Group to hold the blocks with make up the Tetromino
-        self.blocks = pygame.sprite.Group()
+        self.blocks: pygame.sprite.Group = pygame.sprite.Group()
 
         # Randomly assign the shape of the Tetromino.
-        self.shape = random.choice(list(constants.TETROMINO_SHAPES.keys()))
+        self.shape: str = random.choice(list(constants.TETROMINO_SHAPES.keys()))
 
         # Create the blocks
         self.create_blocks()
 
-    def create_blocks(self):
+    def create_blocks(self) -> None:
         """ Creates a block and give it an ID. """
         for i in range(4):
             new_block = Block(self.colour, i)
             self.blocks.add(new_block)
 
-    def set_starting_coordinates(self):
+    def set_starting_coordinates(self) -> None:
         """ Randomly chooses the X coordinate and sets the Tetrominoes coordinates. """
-        done = False
+        done: bool = False
         while not done:
             self.set_x(random.choice(range(-1, 9)))
             # todo - something really wrong here...
@@ -500,45 +452,45 @@ class Tetromino(pygame.sprite.Sprite):
                 done = True
         self.set_y(-3)
 
-    def y_collision(self, static_tetrominoes) -> bool:
+    def y_collision(self, static_tetrominoes: pygame.sprite.Group) -> bool:
         for block in self.blocks.sprites():
             if block.y_collision_detection(static_tetrominoes):
                 return True
 
-    def x_collision(self, direction, static_tetrominoes) -> bool:
+    def x_collision(self, direction: str, static_tetrominoes: pygame.sprite.Group) -> bool:
         for block in self.blocks.sprites():
             if block.x_collision_detection(direction, static_tetrominoes):
                 return True
 
-    def shrink_y_hitbox(self):
+    def shrink_y_hitbox(self) -> None:
         """ Calls the shrink method of the Y hitbox for each block. """
         for block in self.blocks.sprites():
             block.shrink_hitbox()
 
-    def add_blocks_to_group(self, group):
+    def add_blocks_to_group(self, group: pygame.sprite.Group) -> None:
         for block in self.blocks.sprites():
             group.add(block)
 
-    def rotate(self):
+    def rotate(self) -> None:
         """ Increases and resets the current_rotation integer accordingly. """
         if self.current_rotation == len(constants.TETROMINO_SHAPES.get(self.shape)) - 1:
             self.current_rotation = 0
         else:
             self.current_rotation += 1
 
-    def move_left(self):
+    def move_left(self) -> None:
         """ Moves the Tetromino to the left on the grid. """
         self.rect.x -= 1 * constants.BLOCK_SIZE
 
-    def move_right(self):
+    def move_right(self) -> None:
         """ Moves the Tetromino to the right on the grid. """
         self.rect.x += 1 * constants.BLOCK_SIZE
 
-    def move_down(self):
+    def move_down(self) -> None:
         """ Moves the Tetromino down the grid. """
         self.rect.y += constants.BLOCK_SIZE
 
-    def is_outside_game_area(self):
+    def is_outside_game_area(self) -> bool:
         # todo - something really wrong here...
         for block in self.blocks.sprites():
             if block.get_x(True) >= 360:
@@ -556,7 +508,7 @@ class Tetromino(pygame.sprite.Sprite):
                 return False
         return True
 
-    def draw(self, surface):
+    def draw(self, surface: pygame.Surface) -> None:
         """ Calculates the where to draw each block, and then calls the blocks own draw() method. """
 
         # i will be iterated, and will draw the correct block according to each block's ID.
@@ -576,28 +528,28 @@ class Tetromino(pygame.sprite.Sprite):
             x = self.get_x(True)
             y += constants.BLOCK_SIZE
 
-    def get_x(self, return_raw_data=False) -> int:
+    def get_x(self, return_raw_data: bool = False) -> int:
         """ Returns the X co-ordinate of the Tetromino. """
         if return_raw_data:
             return self.rect.x
         else:
             return self.rect.x // constants.BLOCK_SIZE
 
-    def get_y(self, return_raw_data=False) -> int:
+    def get_y(self, return_raw_data: bool = False) -> int:
         """ Returns the Y co-ordinate of the Tetromino. """
         if return_raw_data:
             return self.rect.y
         else:
             return self.rect.y // constants.BLOCK_SIZE
 
-    def set_x(self, x, parse_raw_data=False):
+    def set_x(self, x: int, parse_raw_data: bool = False):
         """ Sets the X co-ordinate of the Tetromino. """
         if parse_raw_data:
             self.rect.x = x
         else:
             self.rect.x = x * constants.BLOCK_SIZE
 
-    def set_y(self, y, parse_raw_data=False):
+    def set_y(self, y: int, parse_raw_data: bool = False):
         """ Sets the Y co-ordinate of the Tetromino. """
         if parse_raw_data:
             self.rect.y = y
